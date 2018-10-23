@@ -3,7 +3,7 @@ from glob import glob
 import numpy as np
 
 class DataLoader():
-    def __init__(self, dataset_name, img_res=(1720, 720)):
+    def __init__(self, dataset_name, img_res=(400, 400)):
         self.dataset_name = dataset_name
         self.img_res = img_res
 
@@ -64,10 +64,18 @@ class DataLoader():
             imgs_B = np.array(imgs_B)/127.5 - 1.
 
             yield imgs_A, imgs_B
+    def crop_center(self, img, cropx, cropy):
+        y,x,c = img.shape
+        startx = x//2 - cropx//2
+        starty = y//2 - cropy//2    
+        return img[starty:starty+cropy, startx:startx+cropx, :]
 
     def load_img(self, path):
         img = self.imread(path)
-        img = scipy.misc.imresize(img, self.img_res)
+        #only reduce size to 960x400
+        img = scipy.misc.imresize(img, (400,960))
+        #only take center 400x400 *TODO:TEst this
+        img = self.crop_center(img, 400, 400)
         img = img/127.5 - 1.
         return img[np.newaxis, :, :, :]
 

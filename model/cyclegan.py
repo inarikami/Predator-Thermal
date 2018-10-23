@@ -1,5 +1,6 @@
 from __future__ import print_function, division
 import scipy
+from keras.utils.vis_utils import plot_model
 from keras.datasets import mnist
 from keras_contrib.layers.normalization import InstanceNormalization
 from keras.layers import Input, Dense, Reshape, Flatten, Dropout, Concatenate
@@ -18,7 +19,7 @@ import os
 class CycleGAN():
     def __init__(self):
         # Input shape
-        self.img_rows = 960
+        self.img_rows = 400
         self.img_cols = 400
         self.channels = 3
         self.img_shape = (self.img_rows, self.img_cols, self.channels)
@@ -49,9 +50,12 @@ class CycleGAN():
         self.d_A.compile(loss='mse',
             optimizer=optimizer,
             metrics=['accuracy'])
+        plot_model(self.d_A, to_file="Gen_A_model_plot.png", show_layer_names=True, show_shapes=True)
+
         self.d_B.compile(loss='mse',
             optimizer=optimizer,
             metrics=['accuracy'])
+        plot_model(self.d_B, to_file="Gen_B_model_plot.png", show_layer_names=True, show_shapes=True)
 
         #-------------------------
         # Construct Computational
@@ -96,21 +100,22 @@ class CycleGAN():
                                             self.lambda_cycle, self.lambda_cycle,
                                             self.lambda_id, self.lambda_id ],
                             optimizer=optimizer)
+        plot_model(self.combined, to_file="model_plot.png", show_layer_names=True, show_shapes=True)
 
     def build_generator(self):
         """U-Net Generator"""
 
-        def conv2d(layer_input, filters, f_size=4):
+        def conv2d(layer_input, filters, f_size=4, named=''):
             """Layers used during downsampling"""
-            d = Conv2D(filters, kernel_size=f_size, strides=2, padding='same')(layer_input)
+            d = Conv2D(filters, kernel_size=f_size, strides=2, padding='same', name=named)(layer_input)
             d = LeakyReLU(alpha=0.2)(d)
             d = InstanceNormalization()(d)
             return d
 
-        def deconv2d(layer_input, skip_input, filters, f_size=4, dropout_rate=0):
+        def deconv2d(layer_input, skip_input, filters, f_size=4, dropout_rate=0, named=''):
             """Layers used during upsampling"""
             u = UpSampling2D(size=2)(layer_input)
-            u = Conv2D(filters, kernel_size=f_size, strides=1, padding='same', activation='relu')(u)
+            u = Conv2D(filters, kernel_size=f_size, strides=1, padding='same', activation='relu', name=named)(u)
             if dropout_rate:
                 u = Dropout(dropout_rate)(u)
             u = InstanceNormalization()(u)
@@ -121,15 +126,15 @@ class CycleGAN():
         d0 = Input(shape=self.img_shape)
 
         # Downsampling
-        d1 = conv2d(d0, self.gf)
-        d2 = conv2d(d1, self.gf*2)
-        d3 = conv2d(d2, self.gf*4)
-        d4 = conv2d(d3, self.gf*8)
+        d1 = conv2d(d0, self.gf, named='gen_d1')
+        d2 = conv2d(d1, self.gf*2, named='gen_d2')
+        d3 = conv2d(d2, self.gf*4, named='gen_d3')
+        d4 = conv2d(d3, self.gf*8, named='gen_d4')
 
         # Upsampling
-        u1 = deconv2d(d4, d3, self.gf*4)
-        u2 = deconv2d(u1, d2, self.gf*2)
-        u3 = deconv2d(u2, d1, self.gf)
+        u1 = deconv2d(d4, d3, self.gf*4, named='gen_u1')
+        u2 = deconv2d(u1, d2, self.gf*2, named='gen_u2')
+        u3 = deconv2d(u2, d1, self.gf, named='gen_u3')
 
         u4 = UpSampling2D(size=2)(u3)
         output_img = Conv2D(self.channels, kernel_size=4, strides=1, padding='same', activation='tanh')(u4)
@@ -138,9 +143,9 @@ class CycleGAN():
 
     def build_discriminator(self):
 
-        def d_layer(layer_input, filters, f_size=4, normalization=True):
+        def d_layer(layer_input, filters, f_size=4, normalization=True, named=''):
             """Discriminator layer"""
-            d = Conv2D(filters, kernel_size=f_size, strides=2, padding='same')(layer_input)
+            d = Conv2D(filters, kernel_size=f_size, strides=2, padding='same', name=named)(layer_input)
             d = LeakyReLU(alpha=0.2)(d)
             if normalization:
                 d = InstanceNormalization()(d)
@@ -148,12 +153,12 @@ class CycleGAN():
 
         img = Input(shape=self.img_shape)
 
-        d1 = d_layer(img, self.df, normalization=False)
-        d2 = d_layer(d1, self.df*2)
-        d3 = d_layer(d2, self.df*4)
-        d4 = d_layer(d3, self.df*8)
+        d1 = d_layer(img, self.df, normalization=False, named='dis_d1')
+        d2 = d_layer(d1, self.df*2, named='dis_d2')
+        d3 = d_layer(d2, self.df*4, named='dis_d3')
+        d4 = d_layer(d3, self.df*8, named='dis_d4')
 
-        validity = Conv2D(1, kernel_size=4, strides=1, padding='same')(d4)
+        validity = Conv2D(1, kernel_size=4, strides=1, padding='same', name='validity')(d4)
 
         return Model(img, validity)
 
