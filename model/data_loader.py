@@ -73,9 +73,3 @@ class DataLoader():
 
     def imread(self, path):
         return scipy.misc.imread(path, mode='RGB').astype(np.float)
-
-    def videos_to_imgs(self, path, dest):
-        for video in os.listdir(path):
-            if not video.startswith('.'):
-                #do something
-        return

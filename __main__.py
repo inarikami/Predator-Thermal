@@ -2,7 +2,7 @@ from model import cyclegan
 import cv2
 import os
 
-def videos_to_imgs(self, path, dest):
+def videos_to_imgs(path, dest):
     for video in os.listdir(path):
         filenum = 0
         if not video.startswith('.'):
