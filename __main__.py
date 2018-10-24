@@ -1,6 +1,7 @@
 from model import cyclegan
 from model import data_loader
 from keras.models import Model, load_model
+from PIL import Image
 import shutil
 import cv2
 import os
@@ -32,22 +33,53 @@ def train_to_test(path, dest):
                 shutil.copyfile(path+img, dest+img)  
             count += 1
     return
+def convert_frames_to_video(pathIn,pathOut,fps):
+    frame_array = []
+    files = [f for f in os.listdir(pathIn) if isfile(join(pathIn, f))]
+ 
+    #for sorting the file names properly
+    files.sort(key = lambda x: int(x[5:-4]))
+ 
+    for i in range(len(files)):
+        filename=pathIn + files[i]
+        #reading each files
+        img = cv2.imread(filename)
+        height, width, layers = img.shape
+        size = (width,height)
+        print(filename)
+        #inserting the frames into an image array
+        frame_array.append(img)
+ 
+    out = cv2.VideoWriter(pathOut,cv2.VideoWriter_fourcc(*'DIVX'), fps, size)
+ 
+    for i in range(len(frame_array)):
+        # writing to a image array
+        out.write(frame_array[i])
+    out.release()
 
-def evaluate_video(videopath, videodestpath, modelAtoBpath):
-    model = load_model(modelAtoBpath)
-    data_loader.
+def evaluate_video(videopath, temppath, videodestpath, abmodelpath):
+    model = load_model(abmodelpath)
     #convert video into list of images
-    for video in os.listdir(videopath):
-        if not video.startswith('.'):
-            #do something
-            input_imgs = []
-            vidcap = cv2.VideoCapture(videopath+video)
-            success,image = vidcap.read()
-            while success:
-                input_imgs.append(image)
-                success,image = vidcap.read()
-
-
+    videos_to_imgs(videopath, temppath)
+    #feed image through AB
+    dl = data_loader.DataLoader('bullshitlol')
+    imgs_A = []
+    for image in os.listdir(temppath):
+        if not image.startswith('.'):
+            imgs_A.append(dl.load_img(temppath+image))
+    #predict
+    #delete temp
+    for f in temppath:
+        os.remove(f)
+    fake_B = model.predict(imgs_A)
+    #convert back to list of images in file
+    counter = 0
+    for image in fake_B:
+        im = Image.fromarray(image)
+        im.save(temppath+'img{0}.jpeg'.format(counter))    
+        counter += 1  
+    #convert to video
+    convert_frames_to_video(temppath, abmodelpath+'video.avi',60)
     return
 
 # videos_to_imgs(cwd+'\\A_Vids\\',cwd+'\\datasets\\wildlands\\trainA\\') #trainA
@@ -55,8 +87,7 @@ def evaluate_video(videopath, videodestpath, modelAtoBpath):
 # train_to_test(cwd+'\\datasets\\wildlands\\trainA\\',cwd+'\\datasets\\wildlands\\testA\\') #trainA
 # train_to_test(cwd+'\\datasets\\wildlands\\trainB\\',cwd+'\\datasets\\wildlands\\testB\\') #trainB
 
+# gan =cyclegan.CycleGAN()
+# gan.train(epochs=60, batch_size=1, sample_interval=200)
 
-
-
-gan =cyclegan.CycleGAN()
-gan.train(epochs=60, batch_size=1, sample_interval=200)
+evaluate_video()
