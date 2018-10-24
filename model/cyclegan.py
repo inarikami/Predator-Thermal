@@ -1,6 +1,5 @@
 from __future__ import print_function, division
 import scipy
-from keras.utils.vis_utils import plot_model
 from keras.datasets import mnist
 from keras_contrib.layers.normalization import InstanceNormalization
 from keras.layers import Input, Dense, Reshape, Flatten, Dropout, Concatenate
@@ -15,6 +14,7 @@ import sys
 from model import data_loader
 import numpy as np
 import os
+cwd = os.getcwd()
 
 class CycleGAN():
     def __init__(self):
@@ -50,12 +50,10 @@ class CycleGAN():
         self.d_A.compile(loss='mse',
             optimizer=optimizer,
             metrics=['accuracy'])
-        plot_model(self.d_A, to_file="Gen_A_model_plot.png", show_layer_names=True, show_shapes=True)
 
         self.d_B.compile(loss='mse',
             optimizer=optimizer,
             metrics=['accuracy'])
-        plot_model(self.d_B, to_file="Gen_B_model_plot.png", show_layer_names=True, show_shapes=True)
 
         #-------------------------
         # Construct Computational
@@ -100,7 +98,6 @@ class CycleGAN():
                                             self.lambda_cycle, self.lambda_cycle,
                                             self.lambda_id, self.lambda_id ],
                             optimizer=optimizer)
-        plot_model(self.combined, to_file="model_plot.png", show_layer_names=True, show_shapes=True)
 
     def build_generator(self):
         """U-Net Generator"""
@@ -220,6 +217,9 @@ class CycleGAN():
                 # If at save interval => save generated image samples
                 if batch_i % sample_interval == 0:
                     self.sample_images(epoch, batch_i)
+        self.g_AB.save(cwd+'\\ABmodel.h5')
+        self.g_BA.save(cwd+'\\BAmodel.h5')
+
 
     def sample_images(self, epoch, batch_i):
         os.makedirs('images/%s' % self.dataset_name, exist_ok=True)
