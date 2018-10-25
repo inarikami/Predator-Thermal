@@ -64,6 +64,7 @@ class DataLoader():
             imgs_B = np.array(imgs_B)/127.5 - 1.
 
             yield imgs_A, imgs_B
+
     def crop_center(self, img, cropx, cropy):
         y,x,c = img.shape
         startx = x//2 - cropx//2
@@ -73,7 +74,7 @@ class DataLoader():
     def load_img(self, path):
         img = self.imread(path)
         #only reduce size to 960x400
-        img = scipy.misc.imresize(img, (400,960))
+        #img = scipy.misc.imresize(img, (400,960))
         #only take center 400x400 *TODO:TEst this
         img = self.crop_center(img, 400, 400)
         img = img/127.5 - 1.

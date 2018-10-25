@@ -1,10 +1,12 @@
 from model import cyclegan
 from model import data_loader
 from keras.models import Model, load_model
+import numpy as np
 from PIL import Image
 import shutil
 import cv2
 import os
+import glob
 cwd = os.getcwd()
 
 def videos_to_imgs(path, dest):
@@ -12,15 +14,15 @@ def videos_to_imgs(path, dest):
     for video in os.listdir(path):
         if not video.startswith('.'):
             #do something
-            skip = 40
+            skip = 1
             vidcap = cv2.VideoCapture(path+video)
             success,image = vidcap.read()
             count = 0
             while success:
-                if count%skip == 0:
-                    cv2.imwrite(dest+'{0}frame{1}.jpg'.format(filenum,count), image)     # save frame as JPEG file      
+                # if count%skip == 1:
+                cv2.imwrite(dest+'{0}.png'.format(count), image)     # save frame as JPEG file
+                count += 1      
                 success,image = vidcap.read()
-                count += 1
             filenum +=1
     return
 def train_to_test(path, dest):
@@ -34,52 +36,45 @@ def train_to_test(path, dest):
             count += 1
     return
 def convert_frames_to_video(pathIn,pathOut,fps):
-    frame_array = []
-    files = [f for f in os.listdir(pathIn) if isfile(join(pathIn, f))]
- 
-    #for sorting the file names properly
-    files.sort(key = lambda x: int(x[5:-4]))
- 
-    for i in range(len(files)):
-        filename=pathIn + files[i]
-        #reading each files
-        img = cv2.imread(filename)
-        height, width, layers = img.shape
-        size = (width,height)
-        print(filename)
-        #inserting the frames into an image array
-        frame_array.append(img)
- 
-    out = cv2.VideoWriter(pathOut,cv2.VideoWriter_fourcc(*'DIVX'), fps, size)
- 
-    for i in range(len(frame_array)):
-        # writing to a image array
-        out.write(frame_array[i])
-    out.release()
+    img=[]
+    for image in sorted(os.listdir(pathIn), key=lambda x: int(x.replace(".png", ""))):
+        if not image.startswith('.'):
+            img.append(cv2.imread(pathIn+image))
+
+    height,width,layers=img[1].shape
+
+    video=cv2.VideoWriter(pathOut+'video.avi',0,fps,(width,height))
+
+    for j in range(0,len(img)):
+        video.write(img[j])
+
+    cv2.destroyAllWindows()
+    video.release()
 
 def evaluate_video(videopath, temppath, videodestpath, abmodelpath):
     model = load_model(abmodelpath)
     #convert video into list of images
-    videos_to_imgs(videopath, temppath)
+    videos_to_imgs(videopath, temppath+'/A/')
     #feed image through AB
     dl = data_loader.DataLoader('bullshitlol')
-    imgs_A = []
-    for image in os.listdir(temppath):
+    imgs_A = []      
+    for image in sorted(os.listdir(temppath+'/A/'),key=lambda x: int(x.replace(".jpg", ""))):
         if not image.startswith('.'):
-            imgs_A.append(dl.load_img(temppath+image))
-    #predict
+            imgs_A.append(dl.load_img(temppath+'/A/'+image))
+    imgs_A = np.array(imgs_A)
+    imgs_A = np.squeeze(imgs_A)
     #delete temp
-    for f in temppath:
-        os.remove(f)
+    # for f in temppath:
+    #     os.remove(f)
+    #predict
     fake_B = model.predict(imgs_A)
+    #rescale
+    fake_B = 80*(fake_B)+80
     #convert back to list of images in file
-    counter = 0
-    for image in fake_B:
-        im = Image.fromarray(image)
-        im.save(temppath+'img{0}.jpeg'.format(counter))    
-        counter += 1  
+    for i in range(np.size(fake_B,0)):
+        cv2.imwrite(temppath+'/B/'+'{0}.png'.format(i), fake_B[i])  
     #convert to video
-    convert_frames_to_video(temppath, abmodelpath+'video.avi',60)
+    convert_frames_to_video(temppath+'/B/', videodestpath+'/video.avi',30)
     return
 
 # videos_to_imgs(cwd+'\\A_Vids\\',cwd+'\\datasets\\wildlands\\trainA\\') #trainA
@@ -90,4 +85,6 @@ def evaluate_video(videopath, temppath, videodestpath, abmodelpath):
 # gan =cyclegan.CycleGAN()
 # gan.train(epochs=60, batch_size=1, sample_interval=200)
 
-evaluate_video()
+evaluate_video(cwd+'/eval/',cwd+'/temp/',cwd,cwd+'/ABmodel_gen1.h5')
+
+# convert_frames_to_video(cwd+'/temp/B/', cwd+'/video.avi',10)

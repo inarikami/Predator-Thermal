@@ -7,6 +7,7 @@ from keras.layers import BatchNormalization, Activation, ZeroPadding2D
 from keras.layers.advanced_activations import LeakyReLU
 from keras.layers.convolutional import UpSampling2D, Conv2D
 from keras.models import Sequential, Model
+from keras.utils import multi_gpu_model
 from keras.optimizers import Adam
 import datetime
 import matplotlib.pyplot as plt
@@ -91,6 +92,7 @@ class CycleGAN():
                               outputs=[ valid_A, valid_B,
                                         reconstr_A, reconstr_B,
                                         img_A_id, img_B_id ])
+        self.combined = multi_gpu_model(self.combined)
         self.combined.compile(loss=['mse', 'mse',
                                     'mae', 'mae',
                                     'mae', 'mae'],
@@ -256,6 +258,25 @@ class CycleGAN():
         fig.savefig("images/%s/%d_%d.png" % (self.dataset_name, epoch, batch_i))
         plt.close()
 
+    def get_model_memory_usage(self, batch_size, model):
+        import numpy as np
+        from keras import backend as K
+
+        shapes_mem_count = 0
+        for l in model.layers:
+            single_layer_mem = 1
+            for s in l.output_shape:
+                if s is None:
+                    continue
+                single_layer_mem *= s
+            shapes_mem_count += single_layer_mem
+
+        trainable_count = np.sum([K.count_params(p) for p in set(model.trainable_weights)])
+        non_trainable_count = np.sum([K.count_params(p) for p in set(model.non_trainable_weights)])
+
+        total_memory = 4.0*batch_size*(shapes_mem_count + trainable_count + non_trainable_count)
+        gbytes = np.round(total_memory / (1024.0 ** 3), 3)
+        return gbytes
 
 # if __name__ == '__main__':
 #     gan = CycleGAN()
