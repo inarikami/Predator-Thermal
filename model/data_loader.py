@@ -3,7 +3,7 @@ from glob import glob
 import numpy as np
 
 class DataLoader():
-    def __init__(self, dataset_name, img_res=(400, 400)):
+    def __init__(self, dataset_name, img_res=(800, 800)):
         self.dataset_name = dataset_name
         self.img_res = img_res
 
@@ -76,7 +76,7 @@ class DataLoader():
         #only reduce size to 960x400
         #img = scipy.misc.imresize(img, (400,960))
         #only take center 400x400 *TODO:TEst this
-        img = self.crop_center(img, 400, 400)
+        img = self.crop_center(img, 800, 800)
         img = img/127.5 - 1.
         return img[np.newaxis, :, :, :]
 

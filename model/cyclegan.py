@@ -20,8 +20,8 @@ cwd = os.getcwd()
 class CycleGAN():
     def __init__(self):
         # Input shape
-        self.img_rows = 400
-        self.img_cols = 400
+        self.img_rows = 800
+        self.img_cols = 800
         self.channels = 3
         self.img_shape = (self.img_rows, self.img_cols, self.channels)
 
@@ -36,7 +36,7 @@ class CycleGAN():
         self.disc_patch = (patch, patch, 1)
 
         # Number of filters in the first layer of G and D
-        self.gf = 32
+        self.gf = 64
         self.df = 64
 
         # Loss weights
